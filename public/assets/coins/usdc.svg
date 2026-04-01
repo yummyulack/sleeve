@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <circle cx="50" cy="50" r="48" fill="#2775ca"/>
+  <circle cx="50" cy="50" r="36" fill="none" stroke="white" stroke-width="6" opacity="0.9"/>
+  <text x="50" y="58" font-family="Arial" font-size="26" font-weight="bold" fill="white" text-anchor="middle">USD</text>
+</svg>

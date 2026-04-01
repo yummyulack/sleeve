@@ -101,3 +101,7 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in { animation: fade-in 0.4s ease-out forwards; }
+
+/* ── PixiJS panel animations ── */
+@keyframes cq-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+@keyframes cq-glow { 0%,100% { box-shadow: 0 0 12px rgba(29,158,117,0.2); } 50% { box-shadow: 0 0 20px rgba(29,158,117,0.45); } }

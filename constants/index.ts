@@ -13,35 +13,35 @@ export const TRACKED_TOKENS = [
     name: 'Ethereum',
     address: null,
     decimals: 18,
-    logoPath: '/assets/coins/eth.png',
+    logoPath: '/assets/coins/eth.svg',
   },
   {
     symbol: 'USDC',
     name: 'USD Coin',
     address: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913' as const,
     decimals: 6,
-    logoPath: '/assets/coins/usdc.png',
+    logoPath: '/assets/coins/usdc.svg',
   },
   {
     symbol: 'cbBTC',
     name: 'Coinbase BTC',
     address: '0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf' as const,
     decimals: 8,
-    logoPath: '/assets/coins/cbbtc.png',
+    logoPath: '/assets/coins/cbbtc.svg',
   },
   {
     symbol: 'DEGEN',
     name: 'Degen',
     address: '0x4ed4e862860bed51a9570b96d89af5e1b0efefed' as const,
     decimals: 18,
-    logoPath: '/assets/coins/degen.png',
+    logoPath: '/assets/coins/degen.svg',
   },
   {
     symbol: 'BRETT',
     name: 'Brett',
     address: '0x532f27101965dd16442e59d40670faf5ebb142e4' as const,
     decimals: 18,
-    logoPath: '/assets/coins/brett.png',
+    logoPath: '/assets/coins/brett.svg',
   },
 ] as const
 
@@ -61,3 +61,13 @@ export const BONUS_TIERS: Record<BonusTier, { min: number; max: number; amount: 
 }
 
 export const BASE_QUEST_REWARD = 10
+
+// Demo fallback balances — activates when wallet is connected but holds none of the tracked tokens.
+// Balances are realistic amounts; USD values are computed at runtime with live prices.
+export const DEMO_ASSET_BALANCES: Record<string, { balance: bigint; decimals: number }> = {
+  ETH:   { balance: 500000000000000000n,           decimals: 18 }, // 0.5 ETH
+  USDC:  { balance: 500000000n,                    decimals: 6  }, // 500 USDC
+  cbBTC: { balance: 1000000n,                      decimals: 8  }, // 0.01 cbBTC
+  DEGEN: { balance: 10000000000000000000000n,      decimals: 18 }, // 10,000 DEGEN
+  BRETT: { balance: 5000000000000000000000n,       decimals: 18 }, // 5,000 BRETT
+}
