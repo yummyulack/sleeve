@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #03060f;
+  --foreground: #e2e8f0;
 }
 
 @theme inline {
@@ -12,15 +12,92 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+  overflow: hidden;
 }
+
+/* ── Orb float ── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33%       { transform: translateY(-12px) rotate(1deg); }
+  66%       { transform: translateY(-6px) rotate(-1deg); }
+}
+.animate-float { animation: float 6s ease-in-out infinite; }
+
+/* ── Orb pulse glow ── */
+@keyframes orb-pulse {
+  0%, 100% { box-shadow: 0 0 20px 4px var(--glow-color, #6366f1aa); }
+  50%       { box-shadow: 0 0 40px 12px var(--glow-color, #6366f1aa); }
+}
+.animate-orb-pulse { animation: orb-pulse 3s ease-in-out infinite; }
+
+/* ── Fish swim ── */
+@keyframes swim-right {
+  0%   { transform: translateX(-120px) scaleX(1); opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 1; }
+  100% { transform: translateX(calc(100vw + 120px)) scaleX(1); opacity: 0; }
+}
+@keyframes swim-left {
+  0%   { transform: translateX(calc(100vw + 120px)) scaleX(-1); opacity: 0; }
+  5%   { opacity: 1; }
+  95%  { opacity: 1; }
+  100% { transform: translateX(-120px) scaleX(-1); opacity: 0; }
+}
+.animate-swim-right { animation: swim-right linear infinite; }
+.animate-swim-left  { animation: swim-left  linear infinite; }
+
+/* ── Bubble rise ── */
+@keyframes bubble-rise {
+  0%   { transform: translateY(0) scale(1); opacity: 0.6; }
+  100% { transform: translateY(-100vh) scale(1.3); opacity: 0; }
+}
+.animate-bubble { animation: bubble-rise linear infinite; }
+
+/* ── Seaweed sway ── */
+@keyframes sway {
+  0%, 100% { transform: rotate(-8deg); }
+  50%       { transform: rotate(8deg); }
+}
+.animate-sway { animation: sway ease-in-out infinite; transform-origin: bottom center; }
+
+/* ── Pearl tick-up ── */
+@keyframes pearl-pop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+.animate-pearl-pop { animation: pearl-pop 0.35s ease-out; }
+
+/* ── Reward reveal slam ── */
+@keyframes slam-in {
+  0%   { transform: scale(2.5); opacity: 0; }
+  60%  { transform: scale(0.92); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-slam { animation: slam-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+/* ── Jackpot burst ── */
+@keyframes jackpot-flash {
+  0%, 100% { opacity: 1; }
+  25%, 75%  { opacity: 0.3; }
+  50%       { opacity: 1; }
+}
+.animate-jackpot { animation: jackpot-flash 0.2s ease-in-out 4; }
+
+/* ── Particle float up ── */
+@keyframes particle-up {
+  0%   { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-80px) scale(0); opacity: 0; }
+}
+.animate-particle { animation: particle-up 1.2s ease-out forwards; }
+
+/* ── Fade in ── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fade-in 0.4s ease-out forwards; }

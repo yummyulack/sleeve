@@ -1,76 +1,88 @@
 'use client'
 
-import { ConnectButton } from '@/components/ui/ConnectButton'
+import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
+import { supabase } from '@/lib/supabase'
 import { usePrices } from '@/hooks/usePrices'
 import { usePortfolio } from '@/hooks/usePortfolio'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
 import { useQuest } from '@/hooks/useQuest'
+import { AquariumScene } from '@/components/aquarium/AquariumScene'
+import { PearlCounter } from '@/components/hud/PearlCounter'
+import { WalletBadge } from '@/components/hud/WalletBadge'
+import { Leaderboard } from '@/components/hud/Leaderboard'
+import { QuestButton } from '@/components/quest/QuestButton'
+import { RollAnimation } from '@/components/quest/RollAnimation'
+import { RewardReveal } from '@/components/quest/RewardReveal'
+import type { QuestResult } from '@/types'
 
 export default function Home() {
   const { address, isConnected } = useAccount()
-  const { prices, loading: pricesLoading } = usePrices()
+  const { prices } = usePrices()
   const portfolio = usePortfolio(prices)
-  const { entries: leaderboard } = useLeaderboard()
-  const { runQuest, phase, result, error, cooldownMs } = useQuest()
+  const { entries: leaderboard, refresh: refreshLeaderboard } = useLeaderboard()
+  const [pearls, setPearls] = useState(0)
+  const [showReward, setShowReward] = useState(false)
+  const [lastResult, setLastResult] = useState<QuestResult | null>(null)
+
+  // Load pearl count from Supabase when wallet connects
+  useEffect(() => {
+    if (!address) return
+    supabase
+      .from('users')
+      .select('pearls')
+      .eq('wallet_address', address)
+      .single()
+      .then(({ data }) => { if (data) setPearls(data.pearls) })
+  }, [address])
+
+  const { runQuest, phase, result, error, cooldownMs, reset } = useQuest((questResult) => {
+    setLastResult(questResult)
+    setPearls(questResult.totalPearls)
+    setShowReward(true)
+    refreshLeaderboard()
+  })
+
+  const handleDismiss = () => {
+    setShowReward(false)
+    reset()
+  }
+
+  const isRolling = phase === 'signing' || phase === 'resolving'
 
   return (
-    <div className="flex min-h-screen flex-col gap-6 bg-black text-white p-8 font-mono text-sm">
-      <h1 className="text-2xl font-bold">Phase 4 Debug</h1>
+    <div className="relative w-screen h-screen overflow-hidden bg-[#03060f]">
 
-      <ConnectButton />
+      {/* Full-screen aquarium */}
+      <AquariumScene assets={portfolio} />
 
-      {/* Prices */}
-      <section>
-        <h2 className="text-zinc-400 mb-1">usePrices {pricesLoading && '(loading...)'}</h2>
-        <pre className="bg-zinc-900 p-3 rounded">{JSON.stringify(prices, null, 2)}</pre>
-      </section>
+      {/* HUD — top bar */}
+      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-6 py-4">
+        <div className="flex items-center gap-3">
+          <WalletBadge />
+          {isConnected && <PearlCounter pearls={pearls} />}
+        </div>
+        <Leaderboard entries={leaderboard} />
+      </div>
 
-      {/* Portfolio */}
-      {isConnected && (
-        <section>
-          <h2 className="text-zinc-400 mb-1">usePortfolio ({address?.slice(0, 8)}...)</h2>
-          <pre className="bg-zinc-900 p-3 rounded">
-            {portfolio.length === 0
-              ? 'No assets found (zero balances hidden)'
-              : JSON.stringify(portfolio.map(a => ({
-                  symbol: a.symbol,
-                  balance: a.balance.toString(),
-                  usdValue: a.usdValue.toFixed(2),
-                })), null, 2)}
-          </pre>
-        </section>
+      {/* Quest panel — bottom center */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4">
+        {isRolling && <RollAnimation />}
+        {!isRolling && isConnected && (
+          <QuestButton phase={phase} cooldownMs={cooldownMs} onRun={runQuest} />
+        )}
+        {!isConnected && (
+          <p className="text-zinc-600 text-sm">Connect wallet to play</p>
+        )}
+        {error && (
+          <p className="text-red-400 text-xs max-w-[240px] text-center">{error}</p>
+        )}
+      </div>
+
+      {/* Reward reveal overlay */}
+      {showReward && lastResult && (
+        <RewardReveal result={lastResult} onDismiss={handleDismiss} />
       )}
-
-      {/* Quest */}
-      {isConnected && (
-        <section>
-          <h2 className="text-zinc-400 mb-1">useQuest</h2>
-          <div className="bg-zinc-900 p-3 rounded flex flex-col gap-2">
-            <p>Phase: <span className="text-yellow-400">{phase}</span></p>
-            {cooldownMs && <p className="text-red-400">On cooldown — {Math.ceil(cooldownMs / 60000)}m remaining</p>}
-            {error && <p className="text-red-400">Error: {error}</p>}
-            {result && (
-              <pre className="text-green-400">{JSON.stringify(result, null, 2)}</pre>
-            )}
-            <button
-              onClick={runQuest}
-              disabled={phase !== 'idle' && phase !== 'error'}
-              className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 rounded w-fit"
-            >
-              {phase === 'idle' || phase === 'error' ? 'Run Quest' : `${phase}...`}
-            </button>
-          </div>
-        </section>
-      )}
-
-      {/* Leaderboard */}
-      <section>
-        <h2 className="text-zinc-400 mb-1">useLeaderboard</h2>
-        <pre className="bg-zinc-900 p-3 rounded">
-          {leaderboard.length === 0 ? '[]' : JSON.stringify(leaderboard, null, 2)}
-        </pre>
-      </section>
     </div>
   )
 }

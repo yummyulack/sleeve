@@ -84,7 +84,10 @@ function parseLazerResponse(data: unknown): PriceMap {
     if (!symbol || !entry.price) continue
 
     const price = applyExponent(entry.price.price, entry.price.expo)
-    result[symbol] = { price, change24h: 0 }
+    const emaPrice = entry.ema_price ? applyExponent(entry.ema_price.price, entry.ema_price.expo) : 0
+    const raw = emaPrice > 0 ? Math.round(((price - emaPrice) / emaPrice) * 10000) / 100 : 0
+    const change24h = `${raw >= 0 ? '+' : ''}${raw.toFixed(2)}%`
+    result[symbol] = { price, change24h }
   }
 
   return result
@@ -111,7 +114,10 @@ async function fetchFromHermes(): Promise<PriceMap> {
     const symbol = symbolById[item.id?.toLowerCase()]
     if (!symbol || !item.price) continue
     const price = applyExponent(item.price.price, item.price.expo)
-    result[symbol] = { price, change24h: 0 }
+    const emaPrice = applyExponent(item.ema_price.price, item.ema_price.expo)
+    const raw = emaPrice > 0 ? Math.round(((price - emaPrice) / emaPrice) * 10000) / 100 : 0
+    const change24h = `${raw >= 0 ? '+' : ''}${raw.toFixed(2)}%`
+    result[symbol] = { price, change24h }
   }
 
   return result

@@ -2,7 +2,7 @@ export type BonusTier = 'none' | 'small' | 'rare' | 'jackpot'
 
 export interface PriceData {
   price: number
-  change24h: number
+  change24h: string  // formatted percentage e.g. "+1.24%" or "-0.87%"
 }
 
 export type PriceMap = Record<string, PriceData>
