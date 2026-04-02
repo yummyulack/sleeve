@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAccount } from 'wagmi'
-import { supabase } from '@/lib/supabase'
 import { usePrices } from '@/hooks/usePrices'
 import { usePortfolio } from '@/hooks/usePortfolio'
 import { AquariumScene } from '@/components/aquarium/AquariumScene'
@@ -10,7 +9,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { TopBar } from '@/components/hud/TopBar'
 import { QuestPanel } from '@/components/quest/QuestPanel'
 import { TRACKED_TOKENS, DEMO_ASSET_BALANCES } from '@/constants'
-import type { Asset, QuestResult } from '@/types'
+import type { Asset } from '@/types'
 
 export default function Home() {
   const { address, isConnected } = useAccount()
@@ -18,15 +17,13 @@ export default function Home() {
   const assets = usePortfolio(prices)
   const [pearls, setPearls] = useState(0)
 
-  // Load pearl count from Supabase when wallet connects
+  // Load pearl count server-side (bypasses RLS issues with anon key)
   useEffect(() => {
-    if (!address) return
-    supabase
-      .from('users')
-      .select('pearls')
-      .eq('wallet_address', address)
-      .single()
-      .then(({ data }) => { if (data) setPearls(data.pearls) })
+    if (!address) { setPearls(0); return }
+    fetch(`/api/user?wallet=${address}`)
+      .then(r => r.json())
+      .then(data => { if (typeof data.pearls === 'number') setPearls(data.pearls) })
+      .catch(() => {})
   }, [address])
 
   // Demo fallback: when wallet is connected but holds none of the tracked tokens,
@@ -53,8 +50,8 @@ export default function Home() {
     return demo
   }, [isConnected, assets, prices])
 
-  const handleQuestComplete = useCallback((result: QuestResult) => {
-    setPearls(result.totalPearls)
+  const handlePearlsUpdate = useCallback((total: number) => {
+    setPearls(total)
   }, [])
 
   return (
@@ -72,7 +69,7 @@ export default function Home() {
       <QuestPanel
         pearls={pearls}
         isConnected={isConnected}
-        onQuestComplete={handleQuestComplete}
+        onPearlsUpdate={handlePearlsUpdate}
       />
 
     </div>

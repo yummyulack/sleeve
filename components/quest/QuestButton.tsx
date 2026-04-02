@@ -9,16 +9,15 @@ interface Props {
 }
 
 const PHASE_LABEL: Record<QuestPhase, string> = {
-  idle:      'Complete Quest',
-  claiming:  'Claiming...',
+  idle:      'Roll Now',
   signing:   'Sign in wallet...',
   resolving: 'Rolling...',
-  done:      'Complete Quest',
+  done:      'Roll Now',
   error:     'Try Again',
 }
 
 export function QuestButton({ phase, cooldownMs, onRun }: Props) {
-  const disabled = phase === 'claiming' || phase === 'signing' || phase === 'resolving'
+  const disabled = phase === 'signing' || phase === 'resolving'
   const onCooldown = !!cooldownMs && phase === 'idle'
 
   const hoursLeft = cooldownMs ? Math.ceil(cooldownMs / 3_600_000) : 0

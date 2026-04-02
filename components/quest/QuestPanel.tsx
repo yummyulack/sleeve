@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAccount } from 'wagmi'
-import { useQuest, type QuestPhase } from '@/hooks/useQuest'
+import { useDailyClaim, useBonusQuest, type QuestPhase } from '@/hooks/useQuest'
 import { useLeaderboard } from '@/hooks/useLeaderboard'
-import type { QuestResult, BonusTier, LeaderboardEntry } from '@/types'
+import type { QuestResult, BonusTier } from '@/types'
 
 // ─────────────────────────────────────────────
 //  DESIGN TOKENS
@@ -22,6 +22,8 @@ const T = {
   accentGlow: 'rgba(29, 158, 117, 0.35)',
   accentSoft: 'rgba(29, 158, 117, 0.12)',
   purple: '#a855f7',
+  purpleSoft: 'rgba(168, 85, 247, 0.12)',
+  purpleGlow: 'rgba(168, 85, 247, 0.35)',
   gold: '#facc15',
   mono: 'var(--font-mono-alt), "Share Tech Mono", monospace',
   sans: 'var(--font-sans-alt), "IBM Plex Sans", sans-serif',
@@ -117,10 +119,10 @@ function playJackpotFanfare() {
 //  TIER DISPLAY MAP
 // ─────────────────────────────────────────────
 const TIER_MAP: Record<BonusTier, { name: string; color: string; label: string; sound: () => void }> = {
-  none:    { name: 'Base Reward',  color: T.textMuted, label: 'No bonus this time', sound: playChime },
-  small:   { name: 'Small Bonus',  color: T.accent,    label: '+5 Pearls bonus',    sound: () => playMelody([523, 659, 784]) },
-  rare:    { name: 'Rare Drop!',   color: T.purple,    label: '+20 Pearls bonus',   sound: () => playMelody([523, 659, 784, 1047], 0.18, 0.3) },
-  jackpot: { name: 'JACKPOT!',     color: T.gold,      label: '+50 Pearls bonus',   sound: playJackpotFanfare },
+  none:    { name: 'No Bonus',      color: T.textMuted, label: 'Better luck next time', sound: playChime },
+  small:   { name: 'Small Bonus',   color: T.accent,    label: '+5 Pearls bonus',       sound: () => playMelody([523, 659, 784]) },
+  rare:    { name: 'Rare Drop!',    color: T.purple,    label: '+20 Pearls bonus',      sound: () => playMelody([523, 659, 784, 1047], 0.18, 0.3) },
+  jackpot: { name: 'JACKPOT!',      color: T.gold,      label: '+50 Pearls bonus',      sound: playJackpotFanfare },
 }
 
 // ─────────────────────────────────────────────
@@ -241,7 +243,6 @@ function SlotReel({ spinning, result, locked, delay = 0 }: {
 //  STATUS MESSAGES
 // ─────────────────────────────────────────────
 const PHASE_STATUS: Record<string, { line1: string; line2: string }> = {
-  claiming:  { line1: 'Validating quest…',             line2: 'Checking cooldown on server' },
   signing:   { line1: 'Waiting for wallet signature…', line2: 'Sign to commit randomness' },
   resolving: { line1: 'Submitted to Base mainnet…',    line2: 'Pyth Entropy resolving…' },
 }
@@ -289,7 +290,7 @@ function EntropyRoll({ questPhase, questResult, onDone }: {
   const status = PHASE_STATUS[questPhase] ?? PHASE_STATUS.resolving
   const progress = questPhase === 'done' ? 1 : Math.min(elapsed / 40, 0.85)
   const tier = questResult ? TIER_MAP[questResult.bonusTier] : null
-  const earned = questResult ? questResult.baseReward + questResult.bonusAmount : 0
+  const earned = questResult ? questResult.bonusAmount : 0
 
   return (
     <div style={{ padding: '16px 14px' }}>
@@ -306,7 +307,7 @@ function EntropyRoll({ questPhase, questResult, onDone }: {
         }}>
           <div style={{
             width: `${progress * 100}%`, height: '100%', borderRadius: 2,
-            background: `linear-gradient(90deg, ${T.accent}, #2dd4a0)`,
+            background: `linear-gradient(90deg, ${T.purple}, #c084fc)`,
             transition: 'width 0.3s linear',
           }} />
         </div>
@@ -319,7 +320,7 @@ function EntropyRoll({ questPhase, questResult, onDone }: {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
             <div style={{
-              width: 6, height: 6, borderRadius: '50%', background: T.accent,
+              width: 6, height: 6, borderRadius: '50%', background: T.purple,
               animation: 'cq-pulse 1.5s ease infinite',
             }} />
             <span style={{ fontFamily: T.mono, fontSize: 10, color: T.textMuted }}>
@@ -354,13 +355,13 @@ function EntropyRoll({ questPhase, questResult, onDone }: {
             onClick={onDone}
             style={{
               marginTop: 14, padding: '8px 28px',
-              background: T.accentSoft, border: `1px solid ${T.borderActive}`,
-              borderRadius: 8, color: T.accent, fontFamily: T.mono,
+              background: T.purpleSoft, border: `1px solid ${T.purple}50`,
+              borderRadius: 8, color: T.purple, fontFamily: T.mono,
               fontSize: 11, letterSpacing: '1px', cursor: 'pointer',
               transition: 'all 0.2s',
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = T.accentGlow }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = T.accentSoft }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = T.purpleGlow }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = T.purpleSoft }}
           >
             DONE
           </button>
@@ -373,10 +374,10 @@ function EntropyRoll({ questPhase, questResult, onDone }: {
 // ─────────────────────────────────────────────
 //  QUEST CARD
 // ─────────────────────────────────────────────
-function QuestCard({ title, desc, reward, claimable, countdown, onClaim, buttonLabel, accentColor }: {
+function QuestCard({ title, desc, reward, claimable, countdown, onClaim, buttonLabel, accentColor, busy }: {
   title: string; desc: string; reward: string | number
   claimable: boolean; countdown: number; onClaim: () => void
-  buttonLabel?: string; accentColor?: string
+  buttonLabel?: string; accentColor?: string; busy?: boolean
 }) {
   const color = accentColor ?? T.accent
   return (
@@ -393,25 +394,30 @@ function QuestCard({ title, desc, reward, claimable, countdown, onClaim, buttonL
       {claimable ? (
         <button
           onClick={onClaim}
+          disabled={busy}
           style={{
             width: '100%', padding: '9px 0',
-            background: `${color}18`, border: `1px solid ${color}50`,
-            borderRadius: 8, color, fontFamily: T.mono,
-            fontSize: 11, letterSpacing: '1px', cursor: 'pointer',
-            boxShadow: `0 0 16px ${color}20`, transition: 'all 0.2s',
+            background: busy ? 'rgba(255,255,255,0.04)' : `${color}18`,
+            border: `1px solid ${busy ? T.border : `${color}50`}`,
+            borderRadius: 8, color: busy ? T.textDim : color, fontFamily: T.mono,
+            fontSize: 11, letterSpacing: '1px',
+            cursor: busy ? 'not-allowed' : 'pointer',
+            boxShadow: busy ? 'none' : `0 0 16px ${color}20`, transition: 'all 0.2s',
           }}
           onMouseEnter={e => {
+            if (busy) return
             const t = e.currentTarget as HTMLButtonElement
             t.style.background = `${color}30`
             t.style.boxShadow = `0 0 24px ${color}35`
           }}
           onMouseLeave={e => {
+            if (busy) return
             const t = e.currentTarget as HTMLButtonElement
             t.style.background = `${color}18`
             t.style.boxShadow = `0 0 16px ${color}20`
           }}
         >
-          {buttonLabel ?? 'Claim Pearls'}
+          {busy ? 'IN PROGRESS…' : (buttonLabel ?? 'CLAIM PEARLS')}
         </button>
       ) : (
         <div style={{
@@ -463,7 +469,6 @@ function AchievementRow({ quest }: { quest: typeof ACHIEVEMENT_QUESTS[number] })
 // ─────────────────────────────────────────────
 function LeaderboardTab({ currentAddress }: { currentAddress?: string }) {
   const { entries, loading } = useLeaderboard()
-
   const medals = ['🥇', '🥈', '🥉']
 
   if (loading) {
@@ -544,32 +549,41 @@ type Tab = 'quests' | 'tank' | 'leaderboard'
 interface Props {
   pearls: number
   isConnected: boolean
-  onQuestComplete: (result: QuestResult) => void
+  onPearlsUpdate: (total: number) => void
 }
 
-export function QuestPanel({ pearls, isConnected, onQuestComplete }: Props) {
+export function QuestPanel({ pearls, isConnected, onPearlsUpdate }: Props) {
   const { address } = useAccount()
   const [collapsed, setCollapsed] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('quests')
 
-  const { runQuest, reset, phase, result, error, cooldownMs } = useQuest((questResult) => {
-    onQuestComplete(questResult)
+  // ── Daily Claim ──
+  const dailyClaim = useDailyClaim((baseReward, totalPearls) => {
+    onPearlsUpdate(totalPearls)
     playChime()
   })
+  const claimCountdown = useLiveCountdown(dailyClaim.cooldownMs)
+  const claimOnCooldown = claimCountdown > 0
+  const claimAvailable = !claimOnCooldown && (dailyClaim.phase === 'idle' || dailyClaim.phase === 'error')
+  const claimBusy = dailyClaim.phase === 'claiming'
 
-  const countdown = useLiveCountdown(cooldownMs)
-  const onCooldown = countdown > 0
-  const isActive = phase !== 'idle' && phase !== 'error'
-  const claimable = !onCooldown && (phase === 'idle' || phase === 'error')
+  // ── Bonus Quest ──
+  const bonusQuest = useBonusQuest((result) => {
+    onPearlsUpdate(result.totalPearls)
+  })
+  const bonusCountdown = useLiveCountdown(bonusQuest.cooldownMs)
+  const bonusOnCooldown = bonusCountdown > 0
+  const bonusAvailable = !bonusOnCooldown && (bonusQuest.phase === 'idle' || bonusQuest.phase === 'error')
+  const bonusActive = bonusQuest.phase !== 'idle' && bonusQuest.phase !== 'error'
 
-  const handleClaim = useCallback(() => {
+  const handleBonus = useCallback(() => {
     if (!isConnected) return
-    runQuest()
-  }, [isConnected, runQuest])
+    bonusQuest.roll()
+  }, [isConnected, bonusQuest])
 
-  const handleDone = useCallback(() => {
-    reset()
-  }, [reset])
+  const handleBonusDone = useCallback(() => {
+    bonusQuest.reset()
+  }, [bonusQuest])
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'quests', label: 'QUESTS' },
@@ -586,7 +600,6 @@ export function QuestPanel({ pearls, isConnected, onQuestComplete }: Props) {
         fontFamily: T.sans,
       }}
     >
-      {/* Panel body */}
       <div style={{
         background: T.bg,
         border: `1px solid ${T.border}`,
@@ -604,22 +617,15 @@ export function QuestPanel({ pearls, isConnected, onQuestComplete }: Props) {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '12px 14px',
             borderBottom: collapsed ? 'none' : `1px solid ${T.border}`,
-            cursor: 'pointer',
-            userSelect: 'none',
+            cursor: 'pointer', userSelect: 'none',
           }}
           onClick={() => setCollapsed(c => !c)}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{
-              fontFamily: T.mono, fontSize: 11, color: T.accent,
-              letterSpacing: '1px', opacity: 0.7,
-            }}>
+            <span style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, letterSpacing: '1px', opacity: 0.7 }}>
               &lt;&gt;
             </span>
-            <span style={{
-              fontFamily: T.mono, fontSize: 12, color: T.text,
-              letterSpacing: '3px', fontWeight: 600,
-            }}>
+            <span style={{ fontFamily: T.mono, fontSize: 12, color: T.text, letterSpacing: '3px', fontWeight: 600 }}>
               SLEEVE
             </span>
           </div>
@@ -641,13 +647,12 @@ export function QuestPanel({ pearls, isConnected, onQuestComplete }: Props) {
 
         {/* ── Expandable body ── */}
         <div style={{
-          maxHeight: collapsed ? 0 : 420,
+          maxHeight: collapsed ? 0 : 460,
           overflow: 'hidden',
           transition: `max-height 0.4s ${T.ease}`,
         }}>
-          {/* Content area */}
           <div style={{
-            height: 340, overflowY: 'auto', padding: '14px 14px 10px',
+            height: 380, overflowY: 'auto', padding: '14px 14px 10px',
             display: 'flex', flexDirection: 'column', gap: 12,
           }}>
 
@@ -659,25 +664,73 @@ export function QuestPanel({ pearls, isConnected, onQuestComplete }: Props) {
                   </div>
                 )}
 
-                {isConnected && isActive && (
-                  <EntropyRoll questPhase={phase} questResult={result} onDone={handleDone} />
-                )}
-
-                {isConnected && !isActive && (
+                {isConnected && (
                   <>
-                    <QuestCard
-                      title="Daily Quest"
-                      desc="Complete the daily quest to earn Pearls. Powered by Pyth Entropy."
-                      reward="10–60"
-                      claimable={claimable}
-                      countdown={countdown}
-                      onClaim={handleClaim}
-                      buttonLabel="Complete Quest"
-                    />
+                    {/* Daily Claim */}
+                    {dailyClaim.phase === 'done' ? (
+                      <div style={{
+                        background: T.bgCard, borderRadius: 10, border: `1px solid ${T.borderActive}`,
+                        padding: 14, textAlign: 'center',
+                      }}>
+                        <div style={{ fontSize: 28, marginBottom: 6 }}>✅</div>
+                        <div style={{ fontFamily: T.mono, fontSize: 11, color: T.accent, letterSpacing: '1px' }}>
+                          +10 PEARLS CLAIMED
+                        </div>
+                        <button
+                          onClick={dailyClaim.reset}
+                          style={{
+                            marginTop: 10, padding: '6px 20px',
+                            background: T.accentSoft, border: `1px solid ${T.borderActive}`,
+                            borderRadius: 6, color: T.accent, fontFamily: T.mono,
+                            fontSize: 10, letterSpacing: '1px', cursor: 'pointer',
+                          }}
+                        >
+                          OK
+                        </button>
+                      </div>
+                    ) : (
+                      <QuestCard
+                        title="Daily Claim"
+                        desc="Come back every day to collect your Pearls."
+                        reward={50}
+                        claimable={claimAvailable}
+                        countdown={claimCountdown}
+                        onClaim={dailyClaim.claim}
+                        buttonLabel="CLAIM PEARLS"
+                        accentColor={T.accent}
+                        busy={claimBusy}
+                      />
+                    )}
 
-                    {error && (
-                      <div style={{ fontFamily: T.mono, fontSize: 10, color: '#f87171', textAlign: 'center', padding: '6px 0' }}>
-                        {error}
+                    {dailyClaim.error && (
+                      <div style={{ fontFamily: T.mono, fontSize: 10, color: '#f87171', textAlign: 'center', padding: '4px 0' }}>
+                        {dailyClaim.error}
+                      </div>
+                    )}
+
+                    {/* Bonus Quest */}
+                    {bonusActive ? (
+                      <EntropyRoll
+                        questPhase={bonusQuest.phase}
+                        questResult={bonusQuest.result}
+                        onDone={handleBonusDone}
+                      />
+                    ) : (
+                      <QuestCard
+                        title="Bonus Quest"
+                        desc="Roll daily for a chance at a bigger reward. Powered by Pyth Entropy."
+                        reward="50–200"
+                        claimable={bonusAvailable}
+                        countdown={bonusCountdown}
+                        onClaim={handleBonus}
+                        buttonLabel="ROLL NOW"
+                        accentColor={T.purple}
+                      />
+                    )}
+
+                    {bonusQuest.error && !bonusActive && (
+                      <div style={{ fontFamily: T.mono, fontSize: 10, color: '#f87171', textAlign: 'center', padding: '4px 0' }}>
+                        {bonusQuest.error}
                       </div>
                     )}
 
@@ -697,14 +750,11 @@ export function QuestPanel({ pearls, isConnected, onQuestComplete }: Props) {
             )}
 
             {activeTab === 'tank' && <TankTab />}
-
             {activeTab === 'leaderboard' && <LeaderboardTab currentAddress={address} />}
           </div>
 
           {/* ── Tabs ── */}
-          <div style={{
-            display: 'flex', borderTop: `1px solid ${T.border}`,
-          }}>
+          <div style={{ display: 'flex', borderTop: `1px solid ${T.border}` }}>
             {TABS.map(tab => (
               <button
                 key={tab.id}

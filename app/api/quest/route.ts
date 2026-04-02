@@ -72,10 +72,11 @@ export async function POST(req: NextRequest) {
     .eq('wallet_address', walletAddress)
     .single()
 
+  const totalPearls = (user?.pearls ?? 0) + BASE_QUEST_REWARD
   await db
     .from('users')
-    .update({ pearls: (user?.pearls ?? 0) + BASE_QUEST_REWARD })
+    .update({ pearls: totalPearls })
     .eq('wallet_address', walletAddress)
 
-  return NextResponse.json({ baseReward: BASE_QUEST_REWARD })
+  return NextResponse.json({ baseReward: BASE_QUEST_REWARD, totalPearls })
 }
